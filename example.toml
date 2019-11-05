@@ -1,0 +1,8 @@
+[app]
+dbserver = "127.0.0.1"
+dbport = "3306"
+database = "example"
+dbuser = "example"
+dbpassword = "example"
+dbdriver = "mysql"
+dbsource = "example.sql"

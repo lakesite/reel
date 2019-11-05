@@ -32,19 +32,13 @@ done.  If it's a complex task and someone else has an appropriately licensed
 solution which is carefully maintained and largely established, then it's
 a good idea.  Example dependencies that are used:
 
-zzz
-
   1. [Gorilla mux](https://github.com/gorilla/mux) for routing
-  2. [gocql](https://github.com/gocql/gocql) for a ScyllaDB/Cassandra client
+  2. [go-toml](https://github.com/pelletier/go-toml) for reading toml files
   3. [cobra commander](https://github.com/spf13/cobra) for CLI interaction
-  4. [go-redis](https://github.com/go-redis/redis) for a Redis client
-  5. [taskq](https://github.com/vmihailenco/taskq/) for a redis task queue
 
 Consider using convenience libraries that have no dependencies themselves, which
 further help ensure high standards.  We can include them directly, if licensed
 appropriately, with attribution:
-
-  1. [config](https://github.com/JeremyLoy/config) for easy 12FA configuration
 
 ## SOLID KISS ##
 

@@ -9,36 +9,44 @@ import (
   "github.com/lakesite/reel/pkg/manager"
 )
 
-var rootCmd = &cobra.Command{
-  Use:   "reel",
-  Short: "reel development.",
-  Long: `restore app state, for demos and development`,
-  Run: func(cmd *cobra.Command, args []string) {
-    fmt.Println("use -h for help.")
-  },
-}
+var (
+  config string
+  application string
 
-var versionCmd = &cobra.Command{
-  Use:   "version",
-  Short: "Print the version number of reel",
-  Long:  `A number greater than 0, with prefix 'v', and possible suffixes like
-          'a', 'b' or 'RELEASE'`,
-  Run: func(cmd *cobra.Command, args []string) {
-    // todo ...
-    fmt.Println("reel v0.1a")
-  },
-}
+  rootCmd = &cobra.Command{
+    Use:   "reel -c [config.toml] -a [application name]",
+    Short: "run reel with a config against an app.",
+    Long: `restore app state, for demos and development`,
+    Run: func(cmd *cobra.Command, args []string) {
+      manager.Rewind(config, application)
+    },
+  }
 
-var managerCmd = &cobra.Command{
-  Use:   "manager",
-  Short: "Run the manager.",
-  Long:  `Run the management interface.`,
-  Run: func(cmd *cobra.Command, args []string) {
-    manager.RunManagementService()
-  },
-}
+  versionCmd = &cobra.Command{
+    Use:   "version",
+    Short: "Print the version number of reel",
+    Long:  `A number greater than 0, with prefix 'v', and possible suffixes like
+            'a', 'b' or 'RELEASE'`,
+    Run: func(cmd *cobra.Command, args []string) {
+      // todo ...
+      fmt.Println("reel v0.1a")
+    },
+  }
+
+  managerCmd = &cobra.Command{
+    Use:   "manager",
+    Short: "Run the manager.",
+    Long:  `Run the management interface.`,
+    Run: func(cmd *cobra.Command, args []string) {
+      manager.RunManagementService()
+    },
+  }
+)
 
 func init() {
+  rootCmd.Flags().StringVarP(&config, "config", "c", "", "config file")
+  rootCmd.Flags().StringVarP(&application, "application", "a", "", "application name")
+
   rootCmd.AddCommand(versionCmd)
   rootCmd.AddCommand(managerCmd)
 }
