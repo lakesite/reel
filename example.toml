@@ -1,5 +1,6 @@
 [reel]
 token="{!#}%p13^JTNG$H@R@$HTBgBNbx/Y$&N21"
+default_app="app"
 
 [app]
 dbserver = "127.0.0.1"

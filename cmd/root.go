@@ -19,8 +19,9 @@ var (
     Long: `restore app state, for demos and development`,
     Run: func(cmd *cobra.Command, args []string) {
       ms := &manager.ManagerService{}
-      ms.Init(config, application)
-      ms.Rewind()
+      ms.Init(config)
+      ms.InitApp(application)
+      ms.Rewind(application)
     },
   }
 
@@ -41,6 +42,7 @@ var (
     Long:  `Run the management interface.`,
     Run: func(cmd *cobra.Command, args []string) {
       ms := &manager.ManagerService{}
+      ms.Init(config)
       ms.RunManagementService()
     },
   }
@@ -49,6 +51,11 @@ var (
 func init() {
   rootCmd.Flags().StringVarP(&config, "config", "c", "", "config file")
   rootCmd.Flags().StringVarP(&application, "application", "a", "", "application name")
+  rootCmd.MarkFlagRequired("config")
+  rootCmd.MarkFlagRequired("application")
+
+  managerCmd.Flags().StringVarP(&config, "config", "c", "", "config file")
+  managerCmd.MarkFlagRequired("config")
 
   rootCmd.AddCommand(versionCmd)
   rootCmd.AddCommand(managerCmd)
