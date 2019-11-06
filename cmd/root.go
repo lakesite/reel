@@ -18,7 +18,9 @@ var (
     Short: "run reel with a config against an app.",
     Long: `restore app state, for demos and development`,
     Run: func(cmd *cobra.Command, args []string) {
-      manager.Rewind(config, application)
+      ms := &manager.ManagerService{}
+      ms.Init(config, application)
+      ms.Rewind()
     },
   }
 
@@ -38,7 +40,8 @@ var (
     Short: "Run the manager.",
     Long:  `Run the management interface.`,
     Run: func(cmd *cobra.Command, args []string) {
-      manager.RunManagementService()
+      ms := &manager.ManagerService{}
+      ms.RunManagementService()
     },
   }
 )

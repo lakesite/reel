@@ -35,10 +35,14 @@ a good idea.  Example dependencies that are used:
   1. [Gorilla mux](https://github.com/gorilla/mux) for routing
   2. [go-toml](https://github.com/pelletier/go-toml) for reading toml files
   3. [cobra commander](https://github.com/spf13/cobra) for CLI interaction
+  4. [mysql driver](https://github.com/go-sql-driver/mysql), [postgresql driver](https://github.com/lib/pq)
+  5. [ls-config](github.com/lakesite/ls-config)
+  6. [ls-fibre](github.com/lakesite/ls-fibre)
 
-Consider using convenience libraries that have no dependencies themselves, which
-further help ensure high standards.  We can include them directly, if licensed
-appropriately, with attribution:
+System dependencies:
+
+  1. psql client
+  2. mysql client
 
 ## SOLID KISS ##
 

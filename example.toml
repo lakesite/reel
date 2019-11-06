@@ -1,3 +1,6 @@
+[reel]
+token="{!#}%p13^JTNG$H@R@$HTBgBNbx/Y$&N21"
+
 [app]
 dbserver = "127.0.0.1"
 dbport = "3306"
@@ -6,3 +9,12 @@ dbuser = "example"
 dbpassword = "example"
 dbdriver = "mysql"
 dbsource = "example.sql"
+
+[app2]
+dbserver = "127.0.0.1"
+dbport = "5432"
+database = "example"
+dbuser = "example"
+dbpassword = "example"
+dbdriver = "postgres"
+dbsource = "pgdump.sql"
