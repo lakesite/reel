@@ -9,9 +9,9 @@ import (
 	"os/exec"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/pelletier/go-toml"
-	"github.com/gorilla/mux"
 
 	"github.com/lakesite/ls-config/pkg/config"
 	"github.com/lakesite/ls-fibre/pkg/service"
@@ -28,7 +28,7 @@ type DBConfig struct {
 }
 
 type ManagerService struct {
-	Config *toml.Tree
+	Config   *toml.Tree
 	DBConfig map[string]*DBConfig
 }
 
@@ -109,7 +109,7 @@ func (ms *ManagerService) RewindPostgres(app string) {
 	// use psql client for import (dependency):
 	cmd := exec.Command("psql", "-h", ms.DBConfig[app].Server, "-U", ms.DBConfig[app].User, "-d", ms.DBConfig[app].Database, "-f", ms.DBConfig[app].Source)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PGPASSWORD=" + ms.DBConfig[app].Password)
+	cmd.Env = append(cmd.Env, "PGPASSWORD="+ms.DBConfig[app].Password)
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("pssql import failed with status: %s\n", err)
@@ -119,12 +119,12 @@ func (ms *ManagerService) RewindPostgres(app string) {
 func (ms *ManagerService) Rewind(app string) {
 	// case for driver
 	switch ms.DBConfig[app].Driver {
-		case "mysql":
-			ms.RewindMysql(app)
-		case "postgres":
-			ms.RewindPostgres(app)
-		default:
-			log.Fatalf("Unknown/unsupported database driver: %s\n", ms.DBConfig[app].Driver)
+	case "mysql":
+		ms.RewindMysql(app)
+	case "postgres":
+		ms.RewindPostgres(app)
+	default:
+		log.Fatalf("Unknown/unsupported database driver: %s\n", ms.DBConfig[app].Driver)
 	}
 	fmt.Println("reel OK")
 }
@@ -209,9 +209,22 @@ func (ms *ManagerService) Init(cfgfile string) {
 }
 
 func (ms *ManagerService) RewindHandler(w http.ResponseWriter, r *http.Request) {
-	// check tokens
-	// check app name
-	// look in cwd for config or maintain in memory.
+	da, err := ms.GetAppProperty("reel", "default_app")
+	if err == nil {
+		if ms.InitApp(da) {
+			ms.Rewind(da)
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	} else {
+		// an error here is OK, as we may not have a default app defined, thus the
+		// service is unavailable.
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+}
+
+func (ms *ManagerService) RewindAppHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if ms.InitApp(vars["app"]) {
 		ms.Rewind(vars["app"])
@@ -225,6 +238,7 @@ func (ms *ManagerService) RunManagementService() {
 	address := config.Getenv("REEL_HOST", "127.0.0.1") + ":" + config.Getenv("REEL_PORT", "7999")
 	ws := service.NewWebService("reel", address)
 	// we need to add handlers to rewind, etc.
-	ws.Router.HandleFunc("/api/v1/rewind/{app}", ms.RewindHandler)
+	ws.Router.HandleFunc("/api/v1/rewind/", ms.RewindHandler)
+	ws.Router.HandleFunc("/api/v1/rewind/{app}", ms.RewindAppHandler)
 	ws.RunWebServer()
 }
