@@ -28,8 +28,9 @@ type DBConfig struct {
 }
 
 type ManagerService struct {
-	Config   *toml.Tree
-	DBConfig map[string]*DBConfig
+	Config     *toml.Tree
+	DBConfig   map[string]*DBConfig
+	WebService *service.WebService
 }
 
 func (ms *ManagerService) RewindMysql(app string) {
@@ -234,11 +235,37 @@ func (ms *ManagerService) RewindAppHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (ms *ManagerService) ProxyAppHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if ms.InitApp(vars["app"]) {
+		proxyDest, err := ms.GetAppProperty(vars["app"], "proxy_dest")
+		if err == nil {
+			// default proxy route
+			cfg := []service.ProxyConfig{
+				service.ProxyConfig{
+					Path: "/" + vars["app"],
+					Host: proxyDest,
+					Override: service.ProxyOverride{
+						Match: "/" + vars["app"],
+						Path:  "/",
+					},
+				},
+			}
+			ms.WebService.Proxy(cfg)
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}
+}
+
 func (ms *ManagerService) RunManagementService() {
 	address := config.Getenv("REEL_HOST", "127.0.0.1") + ":" + config.Getenv("REEL_PORT", "7999")
 	ws := service.NewWebService("reel", address)
-	// we need to add handlers to rewind, etc.
-	ws.Router.HandleFunc("/api/v1/rewind/", ms.RewindHandler)
-	ws.Router.HandleFunc("/api/v1/rewind/{app}", ms.RewindAppHandler)
+	ms.WebService = ws
+
+	ws.Router.HandleFunc("/reel/api/v1/rewind/", ms.RewindHandler)
+	ws.Router.HandleFunc("/reel/api/v1/rewind/{app}", ms.RewindAppHandler)
+	ws.Router.HandleFunc("/reel/api/v1/proxy/{app}", ms.ProxyAppHandler)
 	ws.RunWebServer()
 }

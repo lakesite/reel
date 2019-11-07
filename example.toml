@@ -10,6 +10,7 @@ dbuser = "example"
 dbpassword = "example"
 dbdriver = "mysql"
 dbsource = "example.sql"
+proxy_dest = "https://localhost:8101/"
 
 [app2]
 dbserver = "127.0.0.1"
