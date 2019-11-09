@@ -21,7 +21,7 @@ var (
 			ms := &manager.ManagerService{}
 			ms.Init(config)
 			ms.InitApp(application)
-			ms.Rewind(application)
+			ms.Rewind(application, "")
 		},
 	}
 
@@ -46,6 +46,18 @@ var (
 			ms.RunManagementService()
 		},
 	}
+
+	listsourcesCmd = &cobra.Command{
+		Use:   "listsources",
+		Short: "run reel with a config against an app to list database sources.",
+		Long:  `run reel with a config against an app to list database sources.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			ms := &manager.ManagerService{}
+			ms.Init(config)
+			ms.InitApp(application)
+			ms.PrintSources(application)
+		},
+	}
 )
 
 func init() {
@@ -57,8 +69,14 @@ func init() {
 	managerCmd.Flags().StringVarP(&config, "config", "c", "", "config file")
 	managerCmd.MarkFlagRequired("config")
 
+	listsourcesCmd.Flags().StringVarP(&config, "config", "c", "", "config file")
+	listsourcesCmd.Flags().StringVarP(&application, "application", "a", "", "application name")
+	listsourcesCmd.MarkFlagRequired("config")
+	listsourcesCmd.MarkFlagRequired("application")
+
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(managerCmd)
+	rootCmd.AddCommand(listsourcesCmd)
 }
 
 func Execute() {

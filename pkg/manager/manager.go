@@ -1,145 +1,72 @@
 package manager
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/exec"
+	"path/filepath"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
 	"github.com/pelletier/go-toml"
 
-	"github.com/lakesite/ls-config/pkg/config"
 	"github.com/lakesite/ls-fibre/pkg/service"
 )
 
-type DBConfig struct {
-	Server   string
-	Port     string
-	Database string
-	User     string
-	Password string
-	Driver   string
-	Source   string
-}
-
+// ManagerService has a toml Config property which contains reel specific directives,
+// a DBConfig array of app database configurations, and a pointer to the web
+// service.
 type ManagerService struct {
 	Config     *toml.Tree
 	DBConfig   map[string]*DBConfig
 	WebService *service.WebService
 }
 
-func (ms *ManagerService) RewindMysql(app string) {
-	// clear database:
-	db, err := sql.Open("mysql", ms.DBConfig[app].User+":"+ms.DBConfig[app].Password+"@/"+ms.DBConfig[app].Database)
-	if err != nil {
-		log.Fatalf("mysql connection failed: %s\n", err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("SET FOREIGN_KEY_CHECKS = 0")
-	if err != nil {
-		log.Fatalf("Error turning foreign key checks off: %s\n", err)
+// Rewind takes an app's driver configuration and runs the appropriate command
+// to rewind the database
+func (ms *ManagerService) Rewind(app string, source string) {
+	if source == "" {
+		// we need to get the default source
+		source = ms.DBConfig[app].Source
 	}
 
-	query := "SELECT concat('DROP TABLE IF EXISTS ', table_name, ';') FROM information_schema.tables WHERE table_schema = ?"
-	rows, err := db.Query(query, ms.DBConfig[app].Database)
-	defer rows.Close()
-	if err != nil {
-		log.Fatalf("Error querying database %s: %s\n", ms.DBConfig[app].Database, err)
-	}
-
-	result := ""
-	for rows.Next() {
-		err := rows.Scan(&result)
-		if err != nil {
-			log.Fatalf("Error reading result set: %s\n", err)
-		}
-		_, err = db.Exec(result)
-	}
-
-	_, err = db.Exec("SET FOREIGN_KEY_CHECKS = 1")
-	if err != nil {
-		log.Fatalf("Error turning foreign key checks on: %s\n", err)
-	}
-
-	// use mysql client for import (dependency):
-	cmd := exec.Command("mysql", "-u", ms.DBConfig[app].User, "-p"+ms.DBConfig[app].Password, ms.DBConfig[app].Database, "-e", "source "+ms.DBConfig[app].Source)
-	err = cmd.Run()
-	if err != nil {
-		log.Fatalf("mysql import failed with status: %s\n", err)
-	}
-}
-
-func (ms *ManagerService) RewindPostgres(app string) {
-	// clear database:
-	connection := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", ms.DBConfig[app].Server, ms.DBConfig[app].Port, ms.DBConfig[app].User, ms.DBConfig[app].Password, ms.DBConfig[app].Database)
-	db, err := sql.Open("postgres", connection)
-	if err != nil {
-		log.Fatalf("postgres connection failed: %s\n", err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DROP SCHEMA " + ms.DBConfig[app].Database + " CASCADE")
-	if err != nil {
-		log.Printf("Schema did not exist: %s\n", err)
-	}
-	_, err = db.Exec("CREATE SCHEMA " + ms.DBConfig[app].Database)
-	if err != nil {
-		log.Printf("Schema creation failed: %s\n", err)
-	}
-
-	// required for postgresql 9.3+
-	_, err = db.Exec("GRANT ALL ON SCHEMA " + ms.DBConfig[app].Database + " to postgres")
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-	_, err = db.Exec("GRANT ALL ON SCHEMA " + ms.DBConfig[app].Database + " to " + ms.DBConfig[app].Database)
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-	_, err = db.Exec("COMMENT ON SCHEMA " + ms.DBConfig[app].Database + " IS 'standard " + ms.DBConfig[app].Database + " schema'")
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-
-	// use psql client for import (dependency):
-	cmd := exec.Command("psql", "-h", ms.DBConfig[app].Server, "-U", ms.DBConfig[app].User, "-d", ms.DBConfig[app].Database, "-f", ms.DBConfig[app].Source)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PGPASSWORD="+ms.DBConfig[app].Password)
-	err = cmd.Run()
-	if err != nil {
-		log.Fatalf("pssql import failed with status: %s\n", err)
-	}
-}
-
-func (ms *ManagerService) Rewind(app string) {
 	// case for driver
 	switch ms.DBConfig[app].Driver {
 	case "mysql":
-		ms.RewindMysql(app)
+		ms.RewindMysql(app, source)
 	case "postgres":
-		ms.RewindPostgres(app)
+		ms.RewindPostgres(app, source)
 	default:
 		log.Fatalf("Unknown/unsupported database driver: %s\n", ms.DBConfig[app].Driver)
 	}
 	fmt.Println("reel OK")
 }
 
-// get the property for app as a string, if property does not exist return err
-func (ms *ManagerService) GetAppProperty(app string, property string) (string, error) {
-	if ms.Config.Get(app+"."+property) != nil {
-		return ms.Config.Get(app + "." + property).(string), nil
-	} else {
-		return "", fmt.Errorf("Configuration missing '%s' section under [%s] heading.\n", property, app)
+// GetSources uses the app's configuration dbsources to list available sources
+func (ms *ManagerService) GetSources(app string) ([]string, error) {
+	var sources []string
+
+	err := filepath.Walk(ms.DBConfig[app].Sources, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			sources = append(sources, path)
+		}
+		return nil
+	})
+	return sources, err
+}
+
+// PrintSources displays a list of sources via GetSources, using app
+// configuration.
+func (ms *ManagerService) PrintSources(app string) {
+	sources, err := ms.GetSources(app)
+	if err != nil {
+		log.Printf("Error getting dbsources: %s", err)
+	}
+	for _, file := range sources {
+		fmt.Println(file)
 	}
 }
 
-// initialize an app configuration, return true if successful false otherwise
+// InitApp initializes an app configuration, return true if successful false
+// otherwise
 func (ms *ManagerService) InitApp(app string) bool {
 	// should we re-init every time?
 	if ms.DBConfig[app] == nil {
@@ -186,20 +113,30 @@ func (ms *ManagerService) InitApp(app string) bool {
 		success = false
 	}
 
-	ms.DBConfig[app].Source, err = ms.GetAppProperty(app, "dbsource")
-	if err != nil {
-		log.Printf("InitApp Error: %s\n", err)
-		success = false
+	ms.DBConfig[app].Sources, err = ms.GetAppProperty(app, "dbsources")
+	if err == nil {
+		if _, err = os.Stat(ms.DBConfig[app].Sources); os.IsNotExist(err) {
+			log.Printf("InitApp Error: Source databases dumpfile directory '%s' does not exist.\n", ms.DBConfig[app].Sources)
+			success = false
+		}
 	}
 
-	if _, err = os.Stat(ms.DBConfig[app].Source); os.IsNotExist(err) {
-		log.Printf("InitApp Error: Source database dumpfile '%s' does not exist.\n", ms.DBConfig[app].Source)
+	// if we don't have dbsources defined, we must have a single source defined:
+	ms.DBConfig[app].Source, err = ms.GetAppProperty(app, "dbsource")
+	if err != nil && ms.DBConfig[app].Sources == "" {
+		log.Printf("InitApp Error: %s\n", err)
 		success = false
+	} else {
+		if _, err = os.Stat(ms.DBConfig[app].Source); os.IsNotExist(err) {
+			log.Printf("InitApp Error: Source database dumpfile '%s' does not exist.\n", ms.DBConfig[app].Source)
+			success = false
+		}
 	}
 
 	return success
 }
 
+// Init is required to initialize the manager service via a config file.
 func (ms *ManagerService) Init(cfgfile string) {
 	if _, err := os.Stat(cfgfile); os.IsNotExist(err) {
 		log.Fatalf("File '%s' does not exist.\n", cfgfile)
@@ -207,65 +144,4 @@ func (ms *ManagerService) Init(cfgfile string) {
 		ms.Config, _ = toml.LoadFile(cfgfile)
 		ms.DBConfig = make(map[string]*DBConfig)
 	}
-}
-
-func (ms *ManagerService) RewindHandler(w http.ResponseWriter, r *http.Request) {
-	da, err := ms.GetAppProperty("reel", "default_app")
-	if err == nil {
-		if ms.InitApp(da) {
-			ms.Rewind(da)
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}
-	} else {
-		// an error here is OK, as we may not have a default app defined, thus the
-		// service is unavailable.
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}
-}
-
-func (ms *ManagerService) RewindAppHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	if ms.InitApp(vars["app"]) {
-		ms.Rewind(vars["app"])
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}
-}
-
-func (ms *ManagerService) ProxyAppHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	if ms.InitApp(vars["app"]) {
-		proxyDest, err := ms.GetAppProperty(vars["app"], "proxy_dest")
-		if err == nil {
-			// default proxy route
-			cfg := []service.ProxyConfig{
-				service.ProxyConfig{
-					Path: "/" + vars["app"],
-					Host: proxyDest,
-					Override: service.ProxyOverride{
-						Match: "/" + vars["app"],
-						Path:  "/",
-					},
-				},
-			}
-			ms.WebService.Proxy(cfg)
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}
-	}
-}
-
-func (ms *ManagerService) RunManagementService() {
-	address := config.Getenv("REEL_HOST", "127.0.0.1") + ":" + config.Getenv("REEL_PORT", "7999")
-	ws := service.NewWebService("reel", address)
-	ms.WebService = ws
-
-	ws.Router.HandleFunc("/reel/api/v1/rewind/", ms.RewindHandler)
-	ws.Router.HandleFunc("/reel/api/v1/rewind/{app}", ms.RewindAppHandler)
-	ws.Router.HandleFunc("/reel/api/v1/proxy/{app}", ms.ProxyAppHandler)
-	ws.RunWebServer()
 }
