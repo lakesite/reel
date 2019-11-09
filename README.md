@@ -30,13 +30,17 @@ Further [rationale](docs/rationale.md) provided.
 To see how reel works, see the [architecture](docs/architecture.md).
 To see what services reel provides, see the [services](docs/services.md).
 
-## license ##
+## usage ##
 
-MIT - See [LICENSE.md](license.md)
+For use while developing or maintaining a project, please see [usage](docs/usage.md).
 
 ## development ##
 
 To run locally and develop, see [development.md](docs/development.md)
+
+## license ##
+
+MIT - See [LICENSE.md](license.md)
 
 ## contributing ##
 

@@ -109,6 +109,7 @@ func (ms *ManagerService) ProxyAppHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// setupRoutes defines and associates routes to handlers.
 func (ms *ManagerService) setupRoutes(ws *service.WebService) {
 	ws.Router.HandleFunc("/reel/api/v1/sources/", ms.SourcesHandler)
 	ws.Router.HandleFunc("/reel/api/v1/sources/{app}", ms.SourcesHandler)

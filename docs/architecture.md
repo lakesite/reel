@@ -42,7 +42,15 @@ HTTP requests for /app/ or /app/demos/:
 
       Typical configuration:
 
-      /reel/              - Management requests for reel itself.
+      /reel/                             - Management requests for reel itself.
+      /reel/api/v1/sources/              - List of database source files for
+                                           default app.
+    	/reel/api/v1/sources/{app}         - List of database source files for
+                                           {app}.
+    	/reel/api/v1/rewind/               - Rewind the default app.
+    	/reel/api/v1/rewind/{app}          - Rewind {app}
+    	/reel/api/v1/rewind/{app}/{source} - Rewind {app} with {source}
+    	/reel/api/v1/proxy/{app}           - Proxy requests for {app}
 
 ## level 2 ##
 
