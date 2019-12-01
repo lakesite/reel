@@ -25,7 +25,7 @@ func init() {
 
 func TestManagementService(t *testing.T) {
 	address := config.Getenv("REEL_HOST", "127.0.0.1") + ":" + config.Getenv("REEL_PORT", "7999")
-	ws := service.NewService("reel", address)
+	ws := fibre.NewService("reel", address)
 
 	if ws == nil {
 		t.Errorf("Reel management service initialization failed")

@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 
-	"github.com/lakesite/ls-config/pkg/config"
-	"github.com/lakesite/ls-fibre/pkg/service"
+	"github.com/lakesite/ls-config"
+	"github.com/lakesite/ls-fibre"
 )
 
 // Handle requests to rewind an app via Rewind
@@ -91,11 +91,11 @@ func (ms *ManagerService) ProxyAppHandler(w http.ResponseWriter, r *http.Request
 		proxyDest, err := ms.GetAppProperty(vars["app"], "proxy_dest")
 		if err == nil {
 			// default proxy route
-			cfg := []service.ProxyConfig{
-				service.ProxyConfig{
+			cfg := []fibre.ProxyConfig{
+				fibre.ProxyConfig{
 					Path: "/" + vars["app"],
 					Host: proxyDest,
-					Override: service.ProxyOverride{
+					Override: fibre.ProxyOverride{
 						Match: "/" + vars["app"],
 						Path:  "/",
 					},
@@ -110,7 +110,7 @@ func (ms *ManagerService) ProxyAppHandler(w http.ResponseWriter, r *http.Request
 }
 
 // setupRoutes defines and associates routes to handlers.
-func (ms *ManagerService) setupRoutes(ws *service.WebService) {
+func (ms *ManagerService) setupRoutes(ws *fibre.WebService) {
 	ws.Router.HandleFunc("/reel/api/v1/sources/", ms.SourcesHandler)
 	ws.Router.HandleFunc("/reel/api/v1/sources/{app}", ms.SourcesHandler)
 	ws.Router.HandleFunc("/reel/api/v1/rewind/", ms.RewindHandler)
@@ -122,7 +122,7 @@ func (ms *ManagerService) setupRoutes(ws *service.WebService) {
 // RunManagementService sets up the web service and defines routes for the API.
 func (ms *ManagerService) RunManagementService() {
 	address := config.Getenv("REEL_HOST", "127.0.0.1") + ":" + config.Getenv("REEL_PORT", "7999")
-	ms.WebService = service.NewWebService("reel", address)
+	ms.WebService = fibre.NewWebService("reel", address)
 	ms.setupRoutes(ms.WebService)
 	ms.WebService.RunWebServer()
 }

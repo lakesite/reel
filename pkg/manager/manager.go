@@ -8,7 +8,7 @@ import (
 
 	"github.com/pelletier/go-toml"
 
-	"github.com/lakesite/ls-fibre/pkg/service"
+	"github.com/lakesite/ls-fibre"
 )
 
 // ManagerService has a toml Config property which contains reel specific directives,
@@ -17,7 +17,7 @@ import (
 type ManagerService struct {
 	Config     *toml.Tree
 	DBConfig   map[string]*DBConfig
-	WebService *service.WebService
+	WebService *fibre.WebService
 }
 
 // Rewind takes an app's driver configuration and runs the appropriate command
