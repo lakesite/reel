@@ -5,8 +5,11 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/lakesite/ls-governor"
 
-	"github.com/lakesite/reel/pkg/manager"
+	"github.com/lakesite/reel/pkg/api"
+	"github.com/lakesite/reel/pkg/job"
+	"github.com/lakesite/reel/pkg/reel"
 )
 
 var (
@@ -18,10 +21,11 @@ var (
 		Short: "run reel with a config against an app.",
 		Long:  `restore app state, for demos and development`,
 		Run: func(cmd *cobra.Command, args []string) {
-			ms := &manager.ManagerService{}
-			ms.Init(config)
-			ms.InitApp(application)
-			ms.Rewind(application, "")
+			gms := &governor.ManagerService{}
+			gms.InitManager(config)
+			gapi := gms.CreateAPI(application)
+			reel.InitApp(application, gapi)
+			reel.Rewind(application, "", gapi)
 		},
 	}
 
@@ -41,9 +45,16 @@ var (
 		Short: "Run the manager.",
 		Long:  `Run the management interface.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			ms := &manager.ManagerService{}
-			ms.Init(config)
-			ms.RunManagementService()
+			// setup the job queue
+			rw := &job.ReelWorker{}
+			rw.Start()
+
+			gms := &governor.ManagerService{}
+			gms.InitManager(config)
+			gms.InitDatastore("reel")
+			gapi := gms.CreateAPI("reel")
+			api.SetupRoutes(gapi)
+			gms.Daemonize(gapi)
 		},
 	}
 
@@ -52,10 +63,11 @@ var (
 		Short: "run reel with a config against an app to list database sources.",
 		Long:  `run reel with a config against an app to list database sources.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			ms := &manager.ManagerService{}
-			ms.Init(config)
-			ms.InitApp(application)
-			ms.PrintSources(application)
+			gms := &governor.ManagerService{}
+			gms.InitManager(config)
+			gapi := gms.CreateAPI(application)	
+			reel.InitApp(application, gapi)
+			reel.PrintSources(application, gapi)
 		},
 	}
 )
